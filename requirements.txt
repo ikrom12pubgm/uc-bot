@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-aiogram>=3.4
-httpx
-pydantic
