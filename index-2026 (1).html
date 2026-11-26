@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>UC Tap</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --card-top:#1d2b62; --card-bot:#141c47;
+    --red-1:#ef4a5a; --red-2:#c4202f;
+    --gold:#f5c04a; --muted:#aeb7d6; --green:#3ecf7a; --blue:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    background:linear-gradient(180deg,#0f1a45 0%,#162257 55%,#0b1131 100%);
+    overflow:hidden;color:#fff;
+  }
+  button{font-family:inherit}
+
+  .snow{position:fixed;inset:0;pointer-events:none;z-index:1}
+  .snow i{position:absolute;top:-10px;border-radius:50%;background:#fff;animation:fall linear infinite}
+  @keyframes fall{to{transform:translateY(105vh)}}
+
+  #app{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
+  .pages{flex:1;overflow-y:auto;padding:16px 16px 18px}
+  .page{display:none;max-width:460px;margin:0 auto}
+  .page.on{display:block}
+  h2.t{font-size:22px;margin:2px 2px 14px;display:flex;align-items:center;gap:10px}
+  .back{border:0;background:rgba(255,255,255,.1);color:#fff;width:36px;height:36px;border-radius:12px;font-size:18px;cursor:pointer}
+
+  /* pastki menyu */
+  .nav{position:relative;display:flex;align-items:flex-end;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#141c47,#0d1334);border-top:1px solid rgba(255,255,255,.14)}
+  .nav button{flex:1;border:0;background:none;color:var(--muted);font-size:11px;font-weight:700;padding:4px 2px;border-radius:12px;cursor:pointer}
+  .nav button b{display:block;font-size:21px;margin-bottom:2px}
+  .nav button.on{color:#fff}
+  .nav button.on b{filter:drop-shadow(0 0 6px rgba(245,192,74,.7))}
+  .nav button.plus{margin-top:-30px}
+  .nav button.plus span{display:flex;align-items:center;justify-content:center;width:58px;height:58px;margin:0 auto 3px;border-radius:50%;font-size:34px;font-weight:400;line-height:1;color:#fff;
+    background:linear-gradient(180deg,var(--red-1),var(--red-2));border:4px solid #0d1334;box-shadow:0 0 0 2px rgba(239,74,90,.5),0 8px 18px rgba(196,32,47,.5)}
+
+  .top{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:linear-gradient(180deg,var(--card-top),var(--card-bot));border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:10px 12px}
+  .stat small{display:block;color:var(--muted);font-size:12px}
+  .stat b{font-size:20px}
+  .box{background:linear-gradient(180deg,var(--card-top),var(--card-bot));border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:14px;margin-bottom:12px}
+  .box h3{font-size:16px;margin-bottom:8px}
+  .box p,.muted{color:var(--muted);font-size:13px}
+
+  /* tap */
+  .coinwrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 0}
+  #bal{font-size:44px;font-weight:800}
+  #bal span{font-size:20px;color:var(--gold)}
+  #coin{width:230px;height:230px;border-radius:50%;border:0;cursor:pointer;
+    background:radial-gradient(circle at 35% 30%,#fff4b8,#f5c04a 45%,#c98a12 100%);
+    box-shadow:0 0 0 8px rgba(245,192,74,.3),0 18px 40px rgba(0,0,0,.45);
+    font-size:46px;font-weight:900;color:#7a4d00;transition:transform .08s;user-select:none;touch-action:manipulation}
+  #coin:active{transform:scale(.94)}
+  #coin[disabled]{filter:grayscale(.8);opacity:.7}
+  .fly{position:fixed;z-index:50;color:var(--gold);font-weight:800;font-size:22px;pointer-events:none;animation:up .8s ease-out forwards}
+  @keyframes up{to{transform:translateY(-90px);opacity:0}}
+  .bar{width:100%;height:10px;border-radius:6px;background:rgba(255,255,255,.14);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red-1),var(--gold))}
+
+  .btn{border:0;cursor:pointer;color:#fff;font-weight:800;font-size:15px;padding:14px;border-radius:16px;
+    background:linear-gradient(180deg,var(--red-1),var(--red-2));box-shadow:0 5px 14px rgba(196,32,47,.4);width:100%}
+  .btn.alt{background:linear-gradient(180deg,#3a4a8a,#27336b);box-shadow:none}
+  .btn.ok{background:linear-gradient(180deg,#43d083,#25a35c);box-shadow:none}
+  .btn.sm{padding:9px 12px;font-size:13px;border-radius:12px;width:auto}
+  .btn:active{transform:scale(.97)}
+  .btn[disabled]{opacity:.6}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .note{color:var(--muted);font-size:13px;text-align:center;margin-top:10px;min-height:18px}
+
+  input.in{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);color:#fff;font-size:16px;outline:none}
+  input.in:focus{border-color:var(--gold)}
+  .row2{display:flex;gap:8px;align-items:center}
+  .nick{margin-top:8px;font-size:14px;min-height:20px}
+  .nick.good{color:var(--green)} .nick.bad{color:#ffb3bb}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pack{border:1.5px solid rgba(255,255,255,.22);border-radius:18px;padding:14px 10px;text-align:center;cursor:pointer;background:rgba(255,255,255,.04)}
+  .pack:active{transform:scale(.97)}
+  .pack .uc{font-size:24px;font-weight:900;color:var(--gold)}
+  .pack .pr{font-size:14px;margin-top:4px;font-weight:700}
+
+  /* o'yinlar */
+  .search{position:relative;margin-bottom:12px}
+  .search input{padding-left:42px}
+  .search::before{content:"🔍";position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px}
+  .chip{display:inline-block;background:var(--blue);color:#fff;font-weight:800;font-size:14px;padding:9px 18px;border-radius:20px;margin-bottom:14px}
+  .games{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .game{border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.16);background:#141c47;cursor:pointer;position:relative}
+  .game:active{transform:scale(.97)}
+  .game .art{height:92px;display:flex;align-items:center;justify-content:center;font-size:44px}
+  .game .gn{padding:9px 6px;text-align:center;font-weight:800;font-size:12px;line-height:1.25;min-height:46px;display:flex;align-items:center;justify-content:center}
+  .game .soon{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:var(--gold);font-size:9px;font-weight:800;padding:3px 6px;border-radius:8px}
+
+  /* ro'yxat */
+  .li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid rgba(255,255,255,.1);font-size:13px}
+  .li:first-of-type{border-top:0}
+  .tag{font-size:11px;font-weight:800;padding:3px 8px;border-radius:10px;white-space:nowrap;height:max-content}
+  .tag.pending{background:rgba(245,192,74,.2);color:var(--gold)}
+  .tag.done{background:rgba(62,207,122,.2);color:var(--green)}
+  .tag.rejected{background:rgba(239,74,90,.2);color:#ff9aa5}
+
+  /* profil */
+  .me{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .ava{width:54px;height:54px;border-radius:50%;background:linear-gradient(180deg,var(--red-1),var(--red-2));border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+  .tile{border-radius:18px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,var(--card-top),var(--card-bot));padding:14px 6px;text-align:center}
+  .tile b{display:block;font-size:20px}
+  .tile small{color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  .tile.g b{color:var(--green)}
+  .sec{color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.1em;margin:18px 4px 8px}
+  .menu{border-radius:20px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,var(--card-top),var(--card-bot));overflow:hidden}
+  .mi{display:flex;align-items:center;gap:12px;padding:14px;border-top:1px solid rgba(255,255,255,.1);cursor:pointer}
+  .mi:first-child{border-top:0}
+  .mi .ic{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .mi .tx{flex:1;min-width:0}
+  .mi .tx b{display:block;font-size:15px}
+  .mi .tx small{color:var(--muted);font-size:12px}
+  .mi .ar{color:var(--muted);font-size:20px}
+  .badge{font-size:11px;font-weight:800;color:var(--green);border:1px solid rgba(62,207,122,.5);background:rgba(62,207,122,.12);padding:4px 8px;border-radius:8px}
+  .sw{width:50px;height:28px;border-radius:14px;background:rgba(255,255,255,.2);position:relative;transition:background .2s}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s}
+  .sw.on{background:var(--blue)} .sw.on::after{left:25px}
+
+  /* admin */
+  .sg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sg .stat b{font-size:18px}
+  .seg{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .rank{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.1)}
+  .rank:first-of-type{border-top:0}
+  .rank .n{width:26px;height:26px;border-radius:50%;background:rgba(245,192,74,.2);color:var(--gold);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .rank .nm{flex:1;min-width:0;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank .c{font-weight:800;color:var(--gold)}
+
+  #modal{position:fixed;inset:0;z-index:40;background:rgba(5,10,30,.6);display:none;align-items:flex-end;justify-content:center}
+  #modal.on{display:flex}
+  #modal .sheet{width:100%;max-width:460px;background:linear-gradient(180deg,var(--card-top),var(--card-bot));border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  #modal h3{margin-bottom:6px} #modal p{margin-bottom:12px}
+
+  /* qulf oynasi */
+  #gate{position:fixed;inset:0;z-index:60;display:flex;justify-content:center;align-items:flex-start;padding:70px 14px 0;background:linear-gradient(180deg,#0f1a45 0%,#2a3b78 40%,#dfe6f3 80%)}
+  #gate.hidden{display:none}
+  .card{position:relative;width:100%;max-width:440px;padding:58px 18px 20px;background:linear-gradient(180deg,var(--card-top),var(--card-bot));border:1px solid rgba(255,255,255,.18);border-radius:30px;box-shadow:0 20px 50px rgba(0,0,0,.45);text-align:center;height:max-content}
+  .lock{position:absolute;top:-34px;left:50%;transform:translateX(-50%);width:80px;height:80px;border-radius:24px;background:linear-gradient(180deg,var(--red-1),var(--red-2));border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(196,32,47,.55)}
+  .lock svg{width:38px;height:38px}
+  .card h1{font-size:28px;font-weight:800;margin-bottom:10px}
+  .sub{color:var(--muted);font-size:17px;line-height:1.35;margin:0 8px 20px}
+  .row{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:12px;border:1.5px solid rgba(255,255,255,.28);border-radius:20px;background:rgba(255,255,255,.03);transition:border-color .2s,background .2s}
+  .row.missing{border-color:var(--red-1);background:rgba(239,74,90,.12);animation:shake .35s}
+  .row.ok{border-color:var(--green)}
+  @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .ico{flex:0 0 auto;width:54px;height:54px;border-radius:50%;background:linear-gradient(180deg,var(--red-1),var(--red-2));border:2px solid var(--gold);display:flex;align-items:center;justify-content:center}
+  .ico svg{width:26px;height:26px}
+  .name{flex:1;min-width:0;text-align:left;font-size:19px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .go{flex:0 0 auto;border:0;cursor:pointer;color:#fff;font-weight:700;font-size:15px;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,var(--red-1),var(--red-2))}
+  .check{width:100%;margin-top:6px;border:0;cursor:pointer;color:#fff;font-weight:800;font-size:22px;padding:20px;border-radius:22px;background:linear-gradient(180deg,var(--red-1),var(--red-2));box-shadow:0 6px 18px rgba(196,32,47,.5)}
+  .check[disabled]{opacity:.7}
+  .msg{min-height:20px;margin-top:12px;color:#ffb3bb;font-size:15px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="snow" id="snow"></div>
+
+<div id="app">
+  <div class="pages">
+
+    <!-- BOSH (TAP) -->
+    <div class="page on" id="p-tap">
+      <div class="top">
+        <div class="stat"><small>Do'stlar</small><b id="fr">0</b> / <span id="frMin">10</span></div>
+        <div class="stat"><small>Bugun</small><b id="td">0</b> / <span id="lim">20</span> UC</div>
+      </div>
+      <div class="coinwrap">
+        <div id="bal">0.0 <span>UC</span></div>
+        <button id="coin">UC</button>
+        <div class="bar"><i id="barFill"></i></div>
+      </div>
+      <div class="two">
+        <button class="btn" id="invite">👥 Do'st taklif qilish</button>
+        <button class="btn" id="withdraw">💸 Yechib olish</button>
+      </div>
+      <div class="note" id="note"></div>
+    </div>
+
+    <!-- O'YINLAR -->
+    <div class="page" id="p-games">
+      <h2 class="t">🎮 Game Top-Up</h2>
+      <div class="search"><input class="in" id="gSearch" placeholder="O'yin qidirish..."></div>
+      <div class="chip">Barchasi</div>
+      <div class="games" id="gamesGrid"></div>
+      <div class="note" id="gNote"></div>
+    </div>
+
+    <!-- DO'KON (PUBG UC) -->
+    <div class="page" id="p-shop">
+      <h2 class="t"><button class="back" data-back="games">←</button> PUBG Mobile UC</h2>
+      <div class="box">
+        <h3>PUBG ID</h3>
+        <div class="row2">
+          <input class="in" id="shopId" inputmode="numeric" placeholder="PUBG ID kiriting">
+          <button class="btn sm alt" id="shopCheck">Tekshirish</button>
+        </div>
+        <div class="nick" id="shopNick"></div>
+      </div>
+      <div class="box">
+        <h3>Hisobingiz: <span id="shopSom">0</span> so'm</h3>
+        <p>Mablag' yetmasa, «To'ldirish» bo'limidan hisobni to'ldiring.</p>
+      </div>
+      <div class="grid" id="shopGrid"></div>
+      <div class="note" id="shopNote"></div>
+    </div>
+
+    <!-- TO'LDIRISH -->
+    <div class="page" id="p-topup">
+      <h2 class="t">➕ Balans to'ldirish</h2>
+      <div class="box">
+        <p>Hisobingiz</p>
+        <div style="font-size:30px;font-weight:900;color:var(--gold)"><span id="accSom">0</span> so'm</div>
+      </div>
+      <div class="box">
+        <h3>⭐ Telegram Stars</h3>
+        <p style="margin-bottom:10px">1 Star = <span id="starRate">200</span> so'm. To'lov zumda hisobga tushadi.</p>
+        <div class="grid" id="starGrid"></div>
+      </div>
+      <div class="box" id="manualBox" style="display:none">
+        <h3>💳 Karta orqali</h3>
+        <p id="payInfo" style="margin-bottom:10px;white-space:pre-line"></p>
+        <div class="row2"><input class="in" id="manAmount" inputmode="numeric" placeholder="Miqdor, so'm"><button class="btn sm" id="manSend">So'rov</button></div>
+        <p style="margin-top:8px">To'lovdan keyin chekni adminga yuboring. Admin tasdiqlagach hisob to'ladi.</p>
+      </div>
+      <div class="note" id="accNote"></div>
+    </div>
+
+    <!-- BUYURTMALAR / TARIX -->
+    <div class="page" id="p-orders">
+      <h2 class="t">🛍 Buyurtmalar</h2>
+      <div class="box"><div id="myOrders"><p>Yuklanmoqda…</p></div></div>
+    </div>
+
+    <!-- PROFIL -->
+    <div class="page" id="p-profile">
+      <div class="me"><div class="ava" id="ava">U</div>
+        <div><div style="font-weight:800;font-size:18px" id="pName">Foydalanuvchi</div><div class="muted" id="pId"></div></div></div>
+      <div class="tiles">
+        <div class="tile"><b id="pOrders">0</b><small>Buyurtmalar</small></div>
+        <div class="tile"><b id="pSpent">0</b><small>Sarflandi</small></div>
+        <div class="tile g"><b id="pCash">0</b><small>Cashback</small></div>
+      </div>
+      <div class="sec">HISOB</div>
+      <div class="menu">
+        <div class="mi" data-go="topup"><div class="ic">💳</div><div class="tx"><b>Balans to'ldirish</b><small>Telegram Stars<span id="pCard"></span></small></div><div class="ar">›</div></div>
+        <div class="mi" data-go="orders"><div class="ic">📋</div><div class="tx"><b>Tarix</b><small>Buyurtmalar va to'lovlar</small></div><div class="ar">›</div></div>
+      </div>
+      <div class="sec">SOZLAMALAR</div>
+      <div class="menu">
+        <div class="mi" id="miSec"><div class="ic">🔒</div><div class="tx"><b>Xavfsizlik</b><small>Telegram orqali tasdiqlangan</small></div><span class="badge">✓ Himoyalangan</span></div>
+        <div class="mi" id="miNotify"><div class="ic">🔔</div><div class="tx"><b>Bildirishnomalar</b><small id="notifySub">Yoqilgan</small></div><div class="sw on" id="notifySw"></div></div>
+        <div class="mi"><div class="ic">🌐</div><div class="tx"><b>Til</b><small>O'zbek</small></div></div>
+      </div>
+      <div id="adminLinkWrap" style="display:none">
+        <div class="sec">ADMIN</div>
+        <div class="menu"><div class="mi" data-go="admin"><div class="ic">🛠</div><div class="tx"><b>Admin panel</b><small>Statistika, buyurtmalar, kanallar</small></div><div class="ar">›</div></div></div>
+      </div>
+      <div class="note" id="pNote"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="page" id="p-admin">
+      <h2 class="t"><button class="back" data-back="profile">←</button> Admin panel</h2>
+      <div class="seg">
+        <button class="btn sm alt" id="aTabStats">📊 Statistika</button>
+        <button class="btn sm alt" id="aTabPending">⏳ Kutilmoqda</button>
+        <button class="btn sm alt" id="aTabDone">📜 Tarix</button>
+        <button class="btn sm alt" id="aTabChats">📢 Kanallar</button>
+      </div>
+      <div id="adminBody"></div>
+    </div>
+
+  </div>
+
+  <div class="nav" id="nav">
+    <button data-p="tap" class="on"><b>🏠</b>Bosh</button>
+    <button data-p="games"><b>🎮</b>O'yinlar</button>
+    <button data-p="topup" class="plus"><span>+</span>To'ldirish</button>
+    <button data-p="orders"><b>🛍</b>Buyurtmalar</button>
+    <button data-p="profile"><b>👤</b>Profil</button>
+  </div>
+</div>
+
+<div id="modal"><div class="sheet">
+  <h3 id="mTitle"></h3><p id="mText" class="muted"></p>
+  <input class="in" id="mInput" inputmode="numeric" placeholder="PUBG ID">
+  <div class="two"><button class="btn alt" id="mNo">Bekor</button><button class="btn" id="mYes">Davom etish</button></div>
+</div></div>
+
+<div id="gate" class="hidden">
+  <div class="card">
+    <div class="lock">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="9" rx="2" fill="#fff" stroke="none"/>
+        <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+        <circle cx="12" cy="15.5" r="1.4" fill="#c4202f" stroke="none"/>
+      </svg>
+    </div>
+    <h1>Majburiy Obuna</h1>
+    <p class="sub">Davom etish uchun quyidagi kanallarga obuna bo'ling.</p>
+    <div id="list"></div>
+    <button class="check" id="checkBtn">Tekshirish</button>
+    <div class="msg" id="msg"></div>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => Number(n).toLocaleString("ru-RU").replace(/,/g, " ");
+const f1 = n => Number(n).toFixed(1);
+const note = (id, t)=>{ $(id).textContent = t; };
+
+let REQUIRED = [];
+let S = null, pending = 0, started = false, flushing = false;
+
+async function api(path, extra){
+  const r = await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(Object.assign({initData: tg ? tg.initData : ""}, extra||{}))});
+  if(r.status === 403){ check(); throw new Error("sub"); }
+  return r.json();
+}
+
+/* ---------- Majburiy obuna ---------- */
+const gate = $("gate"), list = $("list"), msg = $("msg"), btn = $("checkBtn");
+const megaphone = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z" fill="#fff"/><path d="M15 9a4 4 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/></svg>';
+function renderGate(){
+  list.innerHTML = "";
+  REQUIRED.forEach(c=>{
+    const row = document.createElement("div");
+    row.className = "row"; row.dataset.u = c.username;
+    row.innerHTML = '<div class="ico">'+megaphone+'</div><div class="name">'+esc(c.title)+'</div><button class="go">Kanalga o\'tish</button>';
+    row.querySelector(".go").onclick = ()=>{
+      const url = "https://t.me/"+c.username;
+      tg && tg.openTelegramLink ? tg.openTelegramLink(url) : window.open(url,"_blank");
+    };
+    list.appendChild(row);
+  });
+}
+async function check(){
+  btn.disabled = true; msg.textContent = "";
+  try{
+    const r = await fetch("/api/check-sub",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ initData: tg ? tg.initData : "" })});
+    const data = await r.json();
+    if(data.ok){ gate.classList.add("hidden"); onSubOk(); return true; }
+    gate.classList.remove("hidden");
+    document.querySelectorAll(".row").forEach(row=>{
+      const bad = (data.missing||[]).includes(row.dataset.u);
+      row.classList.toggle("missing", bad); row.classList.toggle("ok", !bad);
+    });
+    msg.textContent = "Kanalga a'zo bo'ling!";
+    tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("error");
+  }catch(e){ gate.classList.remove("hidden"); msg.textContent = "Xatolik. Qayta urinib ko'ring."; }
+  finally{ btn.disabled = false; }
+  return false;
+}
+btn.onclick = check;
+window.requireSub = check;
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) check(); });
+
+/* ---------- Navigatsiya ---------- */
+const NAVOF = { shop:"games", admin:"profile" };
+let cur = "tap";
+function go(p){
+  cur = p;
+  document.querySelectorAll(".page").forEach(x=>x.classList.toggle("on", x.id === "p-"+p));
+  const nv = NAVOF[p] || p;
+  document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("on", x.dataset.p === nv));
+  document.querySelector(".pages").scrollTop = 0;
+  if(p === "shop" || p === "topup" || p === "profile") paint();
+  if(p === "orders") loadMyOrders();
+  if(p === "admin") adminTab("stats");
+}
+document.querySelectorAll("#nav button").forEach(b=> b.onclick = ()=> go(b.dataset.p));
+document.querySelectorAll("[data-back]").forEach(b=> b.onclick = ()=> go(b.dataset.back));
+document.querySelectorAll("[data-go]").forEach(b=> b.onclick = ()=> go(b.dataset.go));
+
+/* ---------- Modal ---------- */
+function ask(title, text){
+  return new Promise(res=>{
+    $("mTitle").textContent = title; $("mText").textContent = text || ""; $("mInput").value = "";
+    $("modal").classList.add("on");
+    const done = v => { $("modal").classList.remove("on"); $("mYes").onclick = $("mNo").onclick = null; res(v); };
+    $("mYes").onclick = ()=> done($("mInput").value.trim());
+    $("mNo").onclick = ()=> done(null);
+  });
+}
+
+/* ---------- Holat ---------- */
+async function onSubOk(){
+  if(started){ refresh(); return; }
+  started = true;
+  const d = await api("/api/me"); if(d.ok){ S = d; paint(); initStatic(); }
+}
+async function refresh(){ try{ const d = await api("/api/me"); if(d.ok){ S = d; paint(); } }catch(e){} }
+
+function initStatic(){
+  $("adminLinkWrap").style.display = S.isAdmin ? "" : "none";
+  $("starRate").textContent = S.starSom;
+  $("starGrid").innerHTML = S.starPacks.map(s=>
+    '<div class="pack" data-s="'+s+'"><div class="uc">⭐ '+s+'</div><div class="pr">'+fmt(s*S.starSom)+' so\'m</div></div>').join("");
+  $("starGrid").querySelectorAll(".pack").forEach(el=> el.onclick = ()=> topup(Number(el.dataset.s)));
+  $("shopGrid").innerHTML = S.shop.map(p=>
+    '<div class="pack" data-uc="'+p.uc+'"><div class="uc">'+p.uc+' UC</div><div class="pr">'+fmt(p.som)+' so\'m</div></div>').join("");
+  $("shopGrid").querySelectorAll(".pack").forEach(el=> el.onclick = ()=> buy(Number(el.dataset.uc)));
+  if(S.payInfo){ $("manualBox").style.display = ""; $("payInfo").textContent = S.payInfo; $("pCard").textContent = ", karta"; }
+  renderGames("");
+  const un = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  const nm = (un && un.first_name) || S.name || "Foydalanuvchi";
+  $("pName").textContent = nm; $("ava").textContent = nm.slice(0,1).toUpperCase(); $("pId").textContent = "ID " + S.id;
+}
+
+function paint(){
+  if(!S) return;
+  const earned = S.today + pending*S.tap;
+  $("bal").innerHTML = f1(S.balance + pending*S.tap) + " <span>UC</span>";
+  $("fr").textContent = S.friends; $("frMin").textContent = S.minFriends;
+  $("td").textContent = f1(earned); $("lim").textContent = S.dailyLimit;
+  $("barFill").style.width = Math.min(100, earned / S.dailyLimit * 100) + "%";
+  $("coin").disabled = earned >= S.dailyLimit - 1e-9;
+  $("shopSom").textContent = fmt(S.som); $("accSom").textContent = fmt(S.som);
+  $("pOrders").textContent = S.ordersCount; $("pSpent").textContent = fmt(S.spent) + " so'm"; $("pCash").textContent = fmt(S.cashback) + " so'm";
+  $("notifySw").classList.toggle("on", S.notify); $("notifySub").textContent = S.notify ? "Yoqilgan" : "O'chirilgan";
+}
+
+/* ---------- Tap ---------- */
+$("coin").addEventListener("pointerdown", e=>{
+  if(!S || $("coin").disabled) return;
+  pending++; paint();
+  const f = document.createElement("div"); f.className = "fly"; f.textContent = "+" + S.tap;
+  f.style.left = e.clientX - 12 + "px"; f.style.top = e.clientY - 30 + "px";
+  document.body.appendChild(f); setTimeout(()=>f.remove(), 800);
+  tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light");
+});
+async function flush(){
+  if(flushing || !pending || !S) return;
+  flushing = true;
+  const n = pending; pending = 0;
+  try{ const d = await api("/api/tap",{taps:n}); if(d.ok) S = d; }catch(e){ pending += n; }
+  flushing = false; paint();
+}
+setInterval(flush, 1000);
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) flush(); });
+
+$("invite").onclick = ()=>{
+  if(!S) return;
+  const link = "https://t.me/" + (window.BOT_NAME || "") + "?start=ref_" + S.id;
+  const text = "🪙 UC Tap — tap qiling va bepul UC yig'ing!";
+  const url = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent(text);
+  tg && tg.openTelegramLink ? tg.openTelegramLink(url) : window.open(url,"_blank");
+};
+$("withdraw").onclick = async ()=>{
+  if(!S) return; await flush();
+  if(S.balance < S.minWithdraw) return note("note","Kamida " + S.minWithdraw + " UC kerak.");
+  if(S.friends < S.minFriends) return note("note","Kamida " + S.minFriends + " ta do'st taklif qiling.");
+  const id = await ask("UC yechish", f1(S.balance) + " UC yechib olinadi. PUBG ID kiriting:");
+  if(!id) return;
+  const d = await api("/api/withdraw",{pubgId:id});
+  if(d.ok){ S = d; paint(); note("note","✅ So'rov yuborildi. Admin tasdiqlaydi."); }
+  else note("note", d.error || "Xatolik");
+};
+
+/* ---------- O'yinlar ---------- */
+function renderGames(q){
+  q = (q||"").toLowerCase();
+  const arr = S.games.filter(g=> g.name.toLowerCase().includes(q));
+  $("gamesGrid").innerHTML = arr.map(g=>
+    '<div class="game" data-id="'+g.id+'" data-k="'+g.kind+'">'+
+      (g.kind==="soon"?'<span class="soon">Tez orada</span>':'')+
+      '<div class="art" style="background:linear-gradient(160deg,'+g.c1+','+g.c2+')">'+g.icon+'</div>'+
+      '<div class="gn">'+esc(g.name)+'</div></div>').join("") || '<p class="muted">Topilmadi</p>';
+  $("gamesGrid").querySelectorAll(".game").forEach(el=> el.onclick = ()=>{
+    const k = el.dataset.k;
+    if(k === "shop") go("shop");
+    else if(k === "stars") go("topup");
+    else note("gNote", "Bu o'yin tez orada qo'shiladi.");
+  });
+}
+$("gSearch").oninput = e=> { if(S) renderGames(e.target.value); };
+
+/* ---------- Do'kon ---------- */
+let shopNick = "";
+$("shopCheck").onclick = async ()=>{
+  const id = $("shopId").value.trim(), el = $("shopNick");
+  el.className = "nick"; el.textContent = "Tekshirilmoqda…"; shopNick = "";
+  const d = await api("/api/nick",{pubgId:id});
+  if(d.ok){ shopNick = d.nick; el.className = "nick good"; el.textContent = "👤 " + d.nick; }
+  else { el.className = "nick bad"; el.textContent = d.error || "Xatolik"; }
+};
+async function buy(uc){
+  const id = $("shopId").value.trim();
+  if(id.replace(/\D/g,"").length < 5) return note("shopNote","Avval PUBG ID kiriting.");
+  const p = S.shop.find(x=>x.uc===uc);
+  if(S.som < p.som){ note("shopNote","Hisobda " + fmt(p.som - S.som) + " so'm yetmaydi. «To'ldirish» bo'limidan to'ldiring."); return; }
+  const ok = tg && tg.showConfirm ? await new Promise(r=>tg.showConfirm(uc+" UC — "+fmt(p.som)+" so'm. ID: "+id+(shopNick?" ("+shopNick+")":""), r)) : true;
+  if(!ok) return;
+  const d = await api("/api/shop/buy",{pubgId:id, uc, nick:shopNick});
+  if(d.ok){ S = d; paint(); note("shopNote","✅ Buyurtma yuborildi. Admin tasdiqlagach UC tushadi."); }
+  else note("shopNote", d.error || "Xatolik");
+}
+
+/* ---------- To'ldirish ---------- */
+async function topup(stars){
+  const d = await api("/api/topup",{stars});
+  if(!d.ok) return note("accNote", d.error || "Xatolik");
+  if(tg && tg.openInvoice){
+    tg.openInvoice(d.link, status=>{
+      if(status === "paid"){ note("accNote","✅ To'lov qabul qilindi"); setTimeout(refresh, 1500); setTimeout(refresh, 4000); }
+      else if(status === "cancelled") note("accNote","To'lov bekor qilindi");
+      else if(status === "failed") note("accNote","To'lov amalga oshmadi");
+    });
+  } else window.open(d.link,"_blank");
+}
+$("manSend").onclick = async ()=>{
+  const amount = Number($("manAmount").value.replace(/\D/g,""));
+  const d = await api("/api/topup-manual",{amount});
+  if(d.ok){ S = d; $("manAmount").value = ""; note("accNote","✅ So'rov yuborildi. Chekni adminga yuboring."); }
+  else note("accNote", d.error || "Xatolik");
+};
+
+/* ---------- Buyurtmalar ---------- */
+const stLabel = {pending:"Kutilmoqda", done:"Bajarildi", rejected:"Rad etildi"};
+function ordTitle(o){
+  if(o.type === "shop") return "🛒 " + o.uc + " UC · " + fmt(o.price) + " so'm";
+  if(o.type === "withdraw") return "💸 Yechish · " + f1(o.uc) + " UC";
+  if(o.type === "topup") return "💳 To'ldirish · " + fmt(o.amount) + " so'm";
+  return "⭐ Stars · " + o.stars + " ⭐ → " + fmt(o.amount) + " so'm";
+}
+async function loadMyOrders(){
+  const d = await api("/api/orders");
+  if(!d.ok) return;
+  $("myOrders").innerHTML = d.orders.length ? d.orders.map(o=>
+    '<div class="li"><div>#'+o.id+' · '+ordTitle(o)+(o.pubg?'<br><span class="muted">ID '+esc(o.pubg)+' · ':'<br><span class="muted">')+new Date(o.at).toLocaleDateString("ru-RU")+'</span></div><span class="tag '+o.status+'">'+stLabel[o.status]+'</span></div>').join("")
+    : '<p>Hali buyurtma yo\'q.</p>';
+}
+
+/* ---------- Profil ---------- */
+$("miNotify").onclick = async ()=>{
+  const d = await api("/api/settings",{notify: !S.notify});
+  if(d.ok){ S = d; paint(); }
+};
+$("miSec").onclick = ()=> note("pNote","Hisobingiz Telegram orqali tasdiqlanadi, parol kerak emas.");
+
+/* ---------- Admin ---------- */
+let aTab = "stats";
+$("aTabStats").onclick = ()=> adminTab("stats");
+$("aTabPending").onclick = ()=> adminTab("pending");
+$("aTabDone").onclick = ()=> adminTab("done");
+$("aTabChats").onclick = ()=> adminTab("chats");
+async function adminTab(t){
+  aTab = t;
+  const body = $("adminBody"); body.innerHTML = '<p class="muted">Yuklanmoqda…</p>';
+  if(t === "stats"){
+    const d = await api("/api/admin/stats"); if(!d.ok){ body.textContent = d.error || "Xatolik"; return; }
+    const s = d.stats;
+    const cell = (l,v)=>'<div class="stat"><small>'+l+'</small><b>'+v+'</b></div>';
+    body.innerHTML =
+      '<div class="sg">'+
+        cell("Foydalanuvchilar", fmt(s.users))+cell("Bugun yangi", fmt(s.newToday))+
+        cell("Bugun faol", fmt(s.activeToday))+cell("Chaqirgan odamlar", fmt(s.withReferrals))+
+        cell("Jami do'stlar", fmt(s.totalFriends))+cell("Jami UC (balans)", f1(s.totalUc))+
+        cell("Hisoblardagi so'm", fmt(s.totalSom))+cell("⭐ Stars tushumi", fmt(s.starsTotal))+
+        cell("🛒 Do'kon: kutilmoqda", s.shopPending)+cell("🛒 Bajarilgan / rad", s.shopDone+" / "+s.shopRejected)+
+        cell("💸 Yechish: kutilmoqda", s.wdPending)+cell("💸 Bajarilgan / rad", s.wdDone+" / "+s.wdRejected)+
+        cell("💳 To'ldirish: kutilmoqda", s.topupPending||0)+
+      '</div>'+
+      '<div class="box" style="margin-top:12px"><h3>🏆 Eng ko\'p do\'st chaqirganlar</h3>'+
+      (d.top.length ? d.top.map((x,i)=>
+        '<div class="rank"><div class="n">'+(i+1)+'</div><div class="nm">'+esc(x.name)+(x.username?' <span class="muted">@'+esc(x.username)+'</span>':'')+'</div><div class="c">'+x.friends+' 👥</div></div>').join("")
+        : '<p>Hali hech kim do\'st chaqirmagan.</p>')+
+      '</div>';
+    return;
+  }
+  if(t === "chats"){ return renderChats(); }
+  const d = await api("/api/admin/orders",{status:t}); if(!d.ok){ body.textContent = d.error || "Xatolik"; return; }
+  if(!d.orders.length){ body.innerHTML = '<p class="muted">Bo\'sh.</p>'; return; }
+  body.innerHTML = d.orders.map(o=>{
+    const who = esc(o.name||"—") + (o.username?" @"+esc(o.username):"") + " · " + o.user;
+    return '<div class="box"><h3>#'+o.id+' · '+ordTitle(o)+'</h3>'+
+      '<p>'+who+'</p>'+(o.pubg?'<p>PUBG ID: <b style="color:#fff">'+esc(o.pubg)+'</b>'+(o.nick?' · '+esc(o.nick):'')+'</p>':'')+
+      '<p>'+new Date(o.at).toLocaleString("ru-RU")+'</p>'+
+      (o.status==="pending"
+        ? '<div class="two"><button class="btn ok sm" data-a="approve" data-id="'+o.id+'">✅ Tasdiqlash</button><button class="btn sm" data-a="reject" data-id="'+o.id+'">❌ Rad etish</button></div>'
+        : '<p style="margin-top:6px"><span class="tag '+o.status+'">'+stLabel[o.status]+'</span></p>')+
+      '</div>';
+  }).join("");
+  body.querySelectorAll("button[data-a]").forEach(b=> b.onclick = async ()=>{
+    b.disabled = true;
+    const r = await api("/api/admin/act",{id:Number(b.dataset.id), action:b.dataset.a});
+    if(!r.ok) console.log(r.error);
+    adminTab(aTab);
+  });
+}
+async function renderChats(extra){
+  const body = $("adminBody");
+  const d = await api("/api/admin/chats"); if(!d.ok){ body.textContent = d.error || "Xatolik"; return; }
+  body.innerHTML =
+    '<div class="box"><h3>📢 Majburiy obuna ro\'yxati</h3>'+
+    (d.chats.length ? d.chats.map(c=>
+      '<div class="li"><div>@'+esc(c)+'</div><button class="btn sm" data-del="'+esc(c)+'">O\'chirish</button></div>').join("")
+      : '<p>Ro\'yxat bo\'sh: hozir hech qanday obuna talab qilinmaydi.</p>')+
+    '</div>'+
+    '<div class="box"><h3>Yangi kanal yoki guruh qo\'shish</h3>'+
+    '<p style="margin-bottom:8px">Avval botni u yerga <b>admin</b> qiling. Username yozing (masalan <b>kanal_nomi</b>).</p>'+
+    '<div class="row2"><input class="in" id="chatIn" placeholder="@kanal_nomi"><button class="btn sm" id="chatAdd">Qo\'shish</button></div>'+
+    '<div class="nick" id="chatMsg">'+(extra?esc(extra):'')+'</div></div>';
+  body.querySelectorAll("button[data-del]").forEach(b=> b.onclick = async ()=>{
+    await api("/api/admin/chat-del",{username:b.dataset.del}); renderChats("O'chirildi");
+  });
+  $("chatAdd").onclick = async ()=>{
+    const v = $("chatIn").value.trim(); if(!v) return;
+    $("chatAdd").disabled = true;
+    const r = await api("/api/admin/chat-add",{username:v});
+    if(r.ok) renderChats("✅ Qo'shildi: " + (r.title||v) + (r.warn?" ⚠️ "+r.warn:""));
+    else { $("chatAdd").disabled = false; $("chatMsg").className = "nick bad"; $("chatMsg").textContent = r.error || "Xatolik"; }
+  };
+}
+
+/* ---------- Boshlash ---------- */
+fetch("/api/config").then(r=>r.json()).then(c=>{ window.BOT_NAME = c.botName; REQUIRED = c.chats; renderGate(); check(); });
+
+(function(){
+  const s = $("snow");
+  for(let i=0;i<40;i++){
+    const d = document.createElement("i"), size = 3+Math.random()*5;
+    d.style.cssText = "left:"+Math.random()*100+"%;width:"+size+"px;height:"+size+"px;animation-duration:"+(6+Math.random()*9)+"s;animation-delay:-"+Math.random()*12+"s;opacity:"+(.4+Math.random()*.6);
+    s.appendChild(d);
+  }
+})();
+</script>
+</body>
+</html>
